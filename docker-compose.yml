@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: miniquant_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: miniquant
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - miniquant_net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: miniquant_api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/app/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/miniquant
+    depends_on:
+      - db
+    networks:
+      - miniquant_net
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dash
+    container_name: miniquant_dash
+    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - ./dashboard:/app/dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    networks:
+      - miniquant_net
+
+volumes:
+  postgres_data:
+
+networks:
+  miniquant_net:
+    driver: bridge

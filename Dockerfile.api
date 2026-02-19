@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Instala compiladores necessários para algumas libs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instala o Poetry
+RUN pip install poetry
+
+# Copia arquivos de configuração
+COPY pyproject.toml poetry.lock* ./
+
+# Configura o poetry para não criar virtualenv (já estamos num container isolado)
+RUN poetry config virtualenvs.create false
+
+# Instala as dependências
+RUN poetry install --no-interaction --no-ansi
+
+# Copia o código
+COPY ./app ./app
+
+EXPOSE 8000
